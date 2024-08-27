@@ -1,12 +1,6 @@
 name: Build tvOS Application
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    branches:
-      - main
   workflow_dispatch:
 
 jobs:
@@ -37,7 +31,6 @@ jobs:
             echo "project=$(find . -name '*.xcodeproj')" >> $GITHUB_ENV
             echo "scheme=$(xcodebuild -list -json | jq -r '.project.schemes[0]')" >> $GITHUB_ENV
           fi
-        2>&1 | tee -a build.log
 
       - name: Build Application
         run: |
@@ -45,38 +38,13 @@ jobs:
             xcodebuild -workspace "$workspace" -scheme "$scheme" -sdk appletvos -configuration Release archive -archivePath $PWD/build/tvOS.xcarchive 2>&1 | tee -a build.log
           elif [ -n "$project" ]; then
             xcodebuild -project "$project" -scheme "$scheme" -sdk appletvos -configuration Release archive -archivePath $PWD/build/tvOS.xcarchive 2>&1 | tee -a build.log
-          fi
-
-      - name: Create ExportOptions.plist
-        run: |
-          cat > exportOptions.plist <<EOF
-          <?xml version="1.0" encoding="UTF-8"?>
-          <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
-          <plist version="1.0">
-          <dict>
-            <key>method</key>
-            <string>ad-hoc</string>
-            <key>signingStyle</key>
-            <string>manual</string>
-            <key>signingCertificate</key>
-            <string></string>
-          </dict>
-          </plist>
-          EOF
-        2>&1 | tee -a build.log
 
       - name: Export IPA
         run: |
-          xcodebuild -exportArchive -archivePath $PWD/build/tvOS.xcarchive -exportOptionsPlist exportOptions.plist -exportPath $PWD/build 2>&1 | tee -a build.log
+          xcodebuild -exportArchive -archivePath $PWD/build/tvOS.xcarchive -exportOptionsPlist $PWD/UpcomingMovies/Info.plist -exportPath $PWD/build 2>&1 | tee -a build.log
 
       - name: Upload IPA
         uses: actions/upload-artifact@v3
         with:
           name: tvOS-App
           path: build/*.ipa
-
-      - name: Upload Log File
-        uses: actions/upload-artifact@v3
-        with:
-          name: build-log
-          path: build.log
